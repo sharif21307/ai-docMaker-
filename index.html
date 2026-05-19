@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI DocCreator - الأداة المباشرة لتنسيق Word</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #f3f4f6;
+        }
+
+        /* تخصيص شريط التمرير */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* رسائل الإشعار (Toast) */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #2E7D32;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 15px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 50px;
+        }
+        #toast.error { background-color: #dc2626; }
+        #toast.warning { background-color: #ea580c; }
+        
+        /* إخفاء سهم القائمة المنسدلة الافتراضي لتخصيص الألوان */
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- شريط الرأس -->
+    <header class="bg-white shadow-sm border-b border-gray-200 z-10">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 text-white p-2.5 rounded-lg shadow-inner">
+                    <i class="fa-solid fa-wand-magic-sparkles text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-gray-900 leading-tight">AI DocCreator</h1>
+                    <p class="text-xs md:text-sm text-gray-500 font-semibold">تنسيق النصوص لتتوافق مع MS Word</p>
+                </div>
+            </div>
+            <a href="https://github.com" target="_blank" class="text-gray-400 hover:text-gray-600 transition" title="مستودع الكود">
+                <i class="fa-brands fa-github text-2xl"></i>
+            </a>
+        </div>
+    </header>
+
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-grow max-w-7xl mx-auto w-full flex flex-col lg:flex-row p-4 gap-6">
+        
+        <!-- القسم الأيمن: الإدخال والإعدادات -->
+        <div class="w-full lg:w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col min-h-[500px]">
+            <div class="p-4 border-b border-gray-100 bg-gray-50 flex flex-col gap-3 rounded-t-xl">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-gray-800 flex items-center gap-2">
+                        <i class="fa-solid fa-paste text-blue-500"></i> النص الأصلي 
+                    </h2>
+                    <button onclick="clearInput()" class="text-xs text-red-500 hover:text-red-700 font-semibold transition bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded">
+                        مسح النص <i class="fa-solid fa-trash-can ml-1"></i>
+                    </button>
+                </div>
+                
+                <!-- إعدادات الألوان (قابلة للطي) -->
+                <details class="group bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <summary class="flex justify-between items-center font-medium cursor-pointer p-3 text-sm text-gray-700 hover:bg-gray-50 transition">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-palette text-purple-500"></i> تخصيص الألوان
+                        </span>
+                        <span class="transition group-open:rotate-180 text-gray-400">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </span>
+                    </summary>
+                    <div class="p-3 border-t border-gray-100 grid grid-cols-2 gap-3 text-sm bg-gray-50 rounded-b-lg">
+                        <div class="flex items-center justify-between bg-white p-2 rounded border border-gray-200 shadow-sm">
+                            <span class="text-gray-600 font-semibold">خلفية الصفحة</span>
+                            <input type="color" id="colorPageBg" value="#ffffff" class="w-8 h-8 cursor-pointer border-0 p-0 bg-transparent rounded">
+                        </div>
+                        <div class="flex items-center justify-between bg-white p-2 rounded border border-gray-200 shadow-sm">
+                            <span class="text-gray-600 font-semibold">العنوان (H1)</span>
+                            <input type="color" id="colorH1" value="#2E7D32" class="w-8 h-8 cursor-pointer border-0 p-0 bg-transparent rounded">
+                        </div>
+                        <div class="flex items-center justify-between bg-white p-2 rounded border border-gray-200 shadow-sm">
+                            <span class="text-gray-600 font-semibold">خلفية (H2)</span>
+                            <input type="color" id="colorH2" value="#2E7D32" class="w-8 h-8 cursor-pointer border-0 p-0 bg-transparent rounded">
+                        </div>
+                        <div class="flex items-center justify-between bg-white p-2 rounded border border-gray-200 shadow-sm">
+                            <span class="text-gray-600 font-semibold">خلفية (H3)</span>
+                            <input type="color" id="colorH3" value="#1565C0" class="w-8 h-8 cursor-pointer border-0 p-0 bg-transparent rounded">
+                        </div>
+                        <div class="flex items-center justify-between bg-white p-2 rounded border border-gray-200 shadow-sm col-span-2 sm:col-span-1">
+                            <span class="text-gray-600 font-semibold">رؤوس الجداول</span>
+                            <input type="color" id="colorTh" value="#FFF176" class="w-8 h-8 cursor-pointer border-0 p-0 bg-transparent rounded">
+                        </div>
+                    </div>
+                </details>
+            </div>
+            
+            <div class="flex-grow p-4">
+                <textarea id="inputText" class="w-full h-full min-h-[350px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none outline-none transition text-sm leading-relaxed" placeholder="ألصق النص أو المحتوى غير المنسق هنا..."></textarea>
+            </div>
+            
+            <div class="p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
+                <button id="formatBtn" onclick="formatText()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold text-lg transition flex items-center justify-center gap-2 shadow-md">
+                    <i id="btnIcon" class="fa-solid fa-wand-magic-sparkles"></i> 
+                    <span id="btnText">تنسيق النص الآن</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- القسم الأيسر: النتيجة والمعاينة -->
+        <div class="w-full lg:w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col min-h-[500px]">
+            <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center rounded-t-xl">
+                <div class="flex gap-2">
+                    <button onclick="switchTab('preview')" id="tabPreview" class="px-4 py-2 bg-white border border-gray-200 text-blue-600 rounded shadow-sm font-bold text-sm transition">
+                        <i class="fa-solid fa-eye"></i> معاينة حية
+                    </button>
+                    <button onclick="switchTab('code')" id="tabCode" class="px-4 py-2 bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded font-bold text-sm transition">
+                        <i class="fa-solid fa-code"></i> كود HTML
+                    </button>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="copyGeneratedHTML()" class="w-10 h-10 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded flex items-center justify-center transition border border-gray-200" title="نسخ الكود">
+                        <i class="fa-regular fa-copy"></i>
+                    </button>
+                    <button onclick="downloadHTML()" class="w-10 h-10 bg-green-100 hover:bg-green-200 text-green-700 rounded flex items-center justify-center transition border border-green-200" title="تحميل ملف Word-ready HTML">
+                        <i class="fa-solid fa-download"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex-grow p-4 relative bg-gray-50 rounded-b-xl overflow-hidden flex flex-col">
+                <!-- شاشة التحميل -->
+                <div id="loadingState" class="absolute inset-0 bg-white/90 z-10 hidden flex-col items-center justify-center">
+                    <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-600 mb-4"></i>
+                    <p class="text-gray-600 font-bold">جاري تحليل وتنسيق النص...</p>
+                    <p class="text-xs text-gray-400 mt-2">قد يستغرق الأمر بضع ثوانٍ</p>
+                </div>
+
+                <!-- شاشة فارغة (قبل التنسيق) -->
+                <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <i class="fa-regular fa-file-code text-6xl mb-4 opacity-50"></i>
+                    <p>النتيجة ستظهر هنا بعد الضغط على "تنسيق"</p>
+                </div>
+
+                <!-- حاوية المعاينة (استخدام iframe لعزل ستايلات Tailwind عن الكود المولد) -->
+                <iframe id="previewContainer" class="w-full h-full bg-white border border-gray-200 rounded shadow-inner hidden"></iframe>
+                
+                <!-- حاوية الكود -->
+                <textarea id="codeContainer" class="w-full h-full bg-gray-900 text-green-400 p-4 rounded text-sm font-mono focus:outline-none resize-none hidden" readonly dir="ltr"></textarea>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- رسالة الإشعار -->
+    <div id="toast">
+        <i id="toastIcon" class="fa-solid fa-circle-check"></i>
+        <span id="toastMessage">رسالة</span>
+    </div>
+
+    <script>
+        // دالة توليد الـ Prompt بناءً على الألوان المختارة
+        function getSystemPrompt() {
+            const pageBg = document.getElementById('colorPageBg').value;
+            const h1Color = document.getElementById('colorH1').value;
+            const h2Bg = document.getElementById('colorH2').value;
+            const h3Bg = document.getElementById('colorH3').value;
+            const thBg = document.getElementById('colorTh').value;
+
+            return `أنت خبير في تصميم الصفحات التعليمية والعروض التدريبية باستخدام HTML5 + CSS ولديك خبرة عملية في جعل صفحات HTML تظهر بنفس الشكل في متصفحات الويب وفي Microsoft Word (الإصدارات القديمة والحديثة). 
+
+المطلوب: تحويل النص المرفق من المستخدم حرفياً (Use exact match text — لا تغير أي كلمة) إلى صفحة HTML5 متكاملة جاهزة للطباعة والعرض. المخرجات يجب أن تكون **كود HTML فقط** (بدون أي شرح أو ملاحظات أو علامات Markdown خارج الكود).
+
+⚠️ شرط التوافق مع Word (قاطع):
+الصفحة الناتجة عند فتحها في Microsoft Word (Word 2010, 2013, 2016, 2019, Word 365...) يجب أن تحتفظ بنفس **الألوان الصريحة (solid colors)**، **خلفيات الخلايا/العناوين**، **الحدود**، **الجداول**، و**الخطوط الأساسية** قدر الإمكان. لا تعتمد على خواص CSS غير مدعومة في Word.
+
+قواعد تنفيذية صارمة — نفّذها حرفياً:
+
+1. **هيكل الصفحة**: استخدم قالب صفحة مبني على جدول ملفوف (wrapper table) بعرض 100% يحاكي صفحة A4. ضع لون الخلفية على خلية الجدول الرئيسية باستخدام كل من bgcolor و style="background-color:${pageBg}" كاحتياط.
+
+2. **الأنماط**: ضع كل الأنماط كـ **inline styles** على العنصر نفسه. اجعل كل قياسات الخط px وليس em/ rem لثبات العرض في Word.
+
+3. **تجنب خواص غير مدعومة**: لا تستخدم box-shadow, linear-gradient, background-image, flex, grid. استبدل التدرجات بألوان صلبة HEX. استخدم حدود (border) بسيطة.
+
+4. **عناوين H1/H2/H3**: ضعها داخل جدول (table > tr > td) مع bgcolor و style مذكورين صراحة لضمان ظهور الخلفية الملونة.
+   * H1: نص بلون ${h1Color} font-size:32px; font-weight:700;
+   * H2: خلفية ${h2Bg} ونص #ffffff padding:10px;
+   * H3: خلفية ${h3Bg} ونص #ffffff padding:8px;
+
+5. **الجداول**: استخدم table, thead, tbody, tr, th, td. ضع bgcolor="${thBg}" و style="background-color:${thBg}" على الـ <th>. حدد border="1" للجدول.
+
+6. **خلفية الصفحة**: أدرج كتلة VML داخل تعليق شرطى MSO أسفل وسم <body> مباشرة لضمان ظهور الخلفية في Word:
+<!--[if gte mso 9]>
+<v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:210mm;height:297mm;">
+<v:fill type="solid" color="${pageBg}" />
+<v:textbox inset="0,0,0,0">
+<![endif]-->
+وقبل نهاية البودي </body>:
+<!--[if gte mso 9]>
+</v:textbox>
+</v:rect>
+<![endif]-->
+
+7. **الخطوط**: font-family: 'Cairo', 'Tahoma', 'Arial', sans-serif;
+
+8. **الصور**: استخدم روابط HTTPS مباشرة.
+
+9. **إخراج نهائي**: يجب أن يكون HTML5 كامل (مع html, head, body)، لا تكتب أي نص خارج الكود. اتجاه الصفحة RTL.`;
+        }
+
+        let currentGeneratedHTML = "";
+
+        // دالة عرض رسائل الإشعار
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById("toast");
+            const toastMessage = document.getElementById("toastMessage");
+            const toastIcon = document.getElementById("toastIcon");
+            
+            toastMessage.innerText = message;
+            
+            toast.className = ""; // Reset
+            if (type === 'error') {
+                toast.classList.add('error');
+                toastIcon.className = "fa-solid fa-circle-xmark";
+            } else if (type === 'warning') {
+                toast.classList.add('warning');
+                toastIcon.className = "fa-solid fa-triangle-exclamation";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-check";
+            }
+            
+            toast.classList.add("show");
+            setTimeout(function(){ toast.classList.remove("show"); }, 3500);
+        }
+
+        // مسح الإدخال
+        function clearInput() {
+            document.getElementById('inputText').value = '';
+            document.getElementById('inputText').focus();
+        }
+
+        // التبديل بين المعاينة والكود
+        function switchTab(tab) {
+            const tabPreview = document.getElementById('tabPreview');
+            const tabCode = document.getElementById('tabCode');
+            const previewContainer = document.getElementById('previewContainer');
+            const codeContainer = document.getElementById('codeContainer');
+            const emptyState = document.getElementById('emptyState');
+
+            if(currentGeneratedHTML === "") return; // لا تفعل شيء إذا لم يتم التوليد بعد
+            emptyState.classList.add('hidden');
+
+            if (tab === 'preview') {
+                tabPreview.className = "px-4 py-2 bg-white border border-gray-200 text-blue-600 rounded shadow-sm font-bold text-sm transition";
+                tabCode.className = "px-4 py-2 bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded font-bold text-sm transition";
+                previewContainer.classList.remove('hidden');
+                codeContainer.classList.add('hidden');
+            } else {
+                tabCode.className = "px-4 py-2 bg-white border border-gray-200 text-blue-600 rounded shadow-sm font-bold text-sm transition";
+                tabPreview.className = "px-4 py-2 bg-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-200 rounded font-bold text-sm transition";
+                codeContainer.classList.remove('hidden');
+                previewContainer.classList.add('hidden');
+            }
+        }
+
+        // دالة الاتصال بالذكاء الاصطناعي والتنسيق
+        async function formatText() {
+            const inputText = document.getElementById('inputText').value.trim();
+            if (!inputText) {
+                showToast('الرجاء إدخال النص أولاً!', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('formatBtn');
+            const btnText = document.getElementById('btnText');
+            const btnIcon = document.getElementById('btnIcon');
+            const loadingState = document.getElementById('loadingState');
+            const emptyState = document.getElementById('emptyState');
+
+            // تغيير حالة الزر
+            btn.disabled = true;
+            btn.classList.replace('bg-blue-600', 'bg-blue-400');
+            btnIcon.className = "fa-solid fa-spinner fa-spin";
+            btnText.innerText = 'جاري المعالجة...';
+            
+            // إظهار شاشة التحميل
+            loadingState.classList.remove('hidden');
+            loadingState.classList.add('flex');
+            emptyState.classList.add('hidden');
+            document.getElementById('previewContainer').classList.add('hidden');
+            document.getElementById('codeContainer').classList.add('hidden');
+
+            try {
+                // ==========================================
+                // ⚠️ هام: ضع مفتاح API الخاص بك هنا
+                // ==========================================
+                const apiKey = "AIzaSyCkpBrtYsa8Sxhi9zE2HhbitnGNcldkxnI"
+"; 
+                
+                if(apiKey === "ضع_مفتاح_API_هنا" || apiKey === "") {
+                    throw new Error("لم يتم إعداد مفتاح API. يرجى إضافته في الكود.");
+                }
+
+                // استخدام نموذج gemini-1.5-flash المتوفر للجميع
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                
+                const payload = {
+                    contents: [{ parts: [{ text: inputText }] }],
+                    systemInstruction: { parts: [{ text: getSystemPrompt() }] },
+                    generationConfig: { temperature: 0.2 } // حرارة منخفضة لتقليل الإبداع والالتزام بالبرومبت
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error('فشل الاتصال بالخادم. تأكد من صحة مفتاح API.');
+                }
+
+                const data = await response.json();
+                let generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+                if (!generatedText) {
+                    throw new Error('لم يتم توليد أي نص.');
+                }
+
+                // تنظيف الكود من علامات الماركداون إذا وجدت (```html ... ```)
+                generatedText = generatedText.replace(/^```(html)?\n/i, '');
+                generatedText = generatedText.replace(/```$/i, '');
+
+                currentGeneratedHTML = generatedText.trim();
+                
+                // تحديث الواجهة
+                document.getElementById('codeContainer').value = currentGeneratedHTML;
+                
+                // وضع الكود داخل iframe للمعاينة المعزولة
+                const iframe = document.getElementById('previewContainer');
+                iframe.srcdoc = currentGeneratedHTML;
+
+                // إظهار النتيجة (تبويب المعاينة افتراضياً)
+                loadingState.classList.remove('flex');
+                loadingState.classList.add('hidden');
+                switchTab('preview');
+                showToast('تم التنسيق بنجاح!');
+
+            } catch (error) {
+                console.error(error);
+                loadingState.classList.remove('flex');
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                showToast(error.message, 'error');
+            } finally {
+                // إعادة الزر لحالته الطبيعية
+                btn.disabled = false;
+                btn.classList.replace('bg-blue-400', 'bg-blue-600');
+                btnIcon.className = "fa-solid fa-wand-magic-sparkles";
+                btnText.innerText = 'تنسيق النص الآن';
+            }
+        }
+
+        // دالة نسخ الكود المولد
+        function copyGeneratedHTML() {
+            if (!currentGeneratedHTML) {
+                showToast('لا يوجد كود لنسخه، قم بتنسيق نص أولاً.', 'warning');
+                return;
+            }
+            const textArea = document.createElement("textarea");
+            textArea.value = currentGeneratedHTML;
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0";
+            document.body.appendChild(textArea);
+            textArea.select();
+
+            try {
+                document.execCommand('copy');
+                showToast('تم نسخ الكود بنجاح!');
+            } catch (err) {
+                showToast('فشل في نسخ الكود.', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        // دالة تحميل الكود كملف HTML لفتحه في Word
+        function downloadHTML() {
+            if (!currentGeneratedHTML) {
+                showToast('لا يوجد ملف لتحميله، قم بتنسيق نص أولاً.', 'warning');
+                return;
+            }
+            // إضافة BOM لدعم اللغة العربية بشكل سليم عند الفتح في أنظمة ويندوز
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const blob = new Blob([bom, currentGeneratedHTML], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'AI_DocCreator_Formatted_Word.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('بدأ تحميل الملف!');
+        }
+    </script>
+</body>
+</html>
